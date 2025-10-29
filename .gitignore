@@ -1,0 +1,5 @@
+node_module/
+.expo/
+dist/
+node_modules
+*.orig
