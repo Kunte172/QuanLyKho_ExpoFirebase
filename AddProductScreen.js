@@ -9,32 +9,29 @@ import {
   addDoc, collection, doc, getDoc, updateDoc, writeBatch,
   query, where, getDocs, limit, onSnapshot
 } from 'firebase/firestore';
-import { db } from './firebaseConfig'; // <-- CHECK THIS PATH
+import { db } from './firebaseConfig';
 
 export default function AddProductScreen({ navigation }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [costPrice, setCostPrice] = useState('');
-  const [unit, setUnit] = useState(''); // Selected Unit name
-  const [category, setCategory] = useState(''); // Selected Category name
+  const [unit, setUnit] = useState(''); 
+  const [category, setCategory] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Category Modal State
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showNewCategoryInput, setShowNewCategoryInput] = useState(false);
 
-  // Unit Modal State
   const [unitModalVisible, setUnitModalVisible] = useState(false);
   const [units, setUnits] = useState([]);
   const [loadingUnits, setLoadingUnits] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
   const [showNewUnitInput, setShowNewUnitInput] = useState(false);
 
-  // Effect to load Categories
   useEffect(() => {
     setLoadingCategories(true);
     const categoryRef = collection(db, 'categories');
@@ -48,7 +45,6 @@ export default function AddProductScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
-  // Effect to load Units
   useEffect(() => {
     setLoadingUnits(true);
     const unitRef = collection(db, 'units');
@@ -62,7 +58,6 @@ export default function AddProductScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
-  // Function to check and add Unit/Category if not exists
   const checkAndAddLookup = async (collectionName, value) => {
     if (!value || typeof value !== 'string') return false;
     const trimmedValue = value.trim();
@@ -85,7 +80,6 @@ export default function AddProductScreen({ navigation }) {
     }
   };
 
-  // Function to save the new product
   const handleSaveProduct = async () => {
     if (!name || !price || !stock || !costPrice || !unit || !category) {
       Alert.alert('Lỗi', 'Vui lòng nhập/chọn đầy đủ thông tin.'); return;
@@ -97,7 +91,6 @@ export default function AddProductScreen({ navigation }) {
     const counterRef = doc(db, 'counters', 'productCounter');
 
     try {
-      // Generate Custom ID
       try {
         const counterSnap = await getDoc(counterRef);
         let currentLastId = 0;
@@ -110,15 +103,11 @@ export default function AddProductScreen({ navigation }) {
       } catch (counterError) { throw new Error('Không thể đọc bộ đếm ID.'); }
       if (typeof newNumericId !== 'number' || isNaN(newNumericId)) { throw new Error('Không thể tạo ID sản phẩm.'); }
 
-      // Unit and Category are already handled via selection/creation
-
-      // Create new product object
       const newProduct = {
         id: customId, name: name, price: parseFloat(price), stock: parseInt(stock, 10),
         costPrice: parseFloat(costPrice), unit: unit, category: category,
       };
 
-      // Batch write product and update counter
       const batch = writeBatch(db);
       const newProductRef = doc(collection(db, 'products'));
       batch.set(newProductRef, newProduct);
@@ -135,7 +124,6 @@ export default function AddProductScreen({ navigation }) {
     }
   };
 
-  // Category Modal Handlers
   const handleSelectCategory = (selectedCategory) => {
     setCategory(selectedCategory.name); setCategoryModalVisible(false);
     setShowNewCategoryInput(false); setNewCategoryName('');
@@ -148,7 +136,6 @@ export default function AddProductScreen({ navigation }) {
     setShowNewCategoryInput(false); setNewCategoryName('');
   };
 
-  // Unit Modal Handlers
   const handleSelectUnit = (selectedUnit) => {
     setUnit(selectedUnit.name); setUnitModalVisible(false);
     setShowNewUnitInput(false); setNewUnitName('');
@@ -248,7 +235,6 @@ export default function AddProductScreen({ navigation }) {
   );
 }
 
-// --- StyleSheet ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 10, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#EEE' },
@@ -263,12 +249,12 @@ const styles = StyleSheet.create({
   label: { fontSize: 15, fontWeight: '500', color: '#333', marginBottom: 6, marginTop: 12 },
   input: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16 },
   staticId: { fontSize: 16, color: '#555', backgroundColor: '#EFEFEF', paddingHorizontal: 12, paddingVertical: 12, borderRadius: 8, borderWidth: 1, borderColor: '#DDD', overflow: 'hidden' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 0 }, // Removed marginBottom from row
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 0 },
   column: { flex: 1, marginRight: 8 },
   'column:last-child': { marginRight: 0 },
   pickerInput: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 11, minHeight: 45 },
   pickerText: { fontSize: 16, color: '#000' },
-  pickerPlaceholder: { fontSize: 16, color: '#BBB' }, // Placeholder color
+  pickerPlaceholder: { fontSize: 16, color: '#BBB' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '70%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },

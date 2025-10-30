@@ -6,10 +6,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  doc, getDoc, updateDoc, deleteDoc,
+  doc, getDoc, updateDoc, deleteDoc, // <-- Đảm bảo có deleteDoc
   collection, query, where, getDocs, limit, addDoc, onSnapshot
 } from 'firebase/firestore';
-import { db } from './firebaseConfig'; // <-- KIỂM TRA ĐƯỜNG DẪN NÀY
+import { db } from './firebaseConfig'; 
 
 export default function EditProductScreen({ route, navigation }) {
   const { productId } = route.params;
@@ -23,6 +23,9 @@ export default function EditProductScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Thêm useAuth để kiểm tra quyền Admin/Staff
+  // NOTE: Logic kiểm tra quyền truy cập màn hình này phải nằm ở HomeScreen
+  
   // Category Modal State
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -54,41 +57,41 @@ export default function EditProductScreen({ route, navigation }) {
           setCategory(product.category || '');
           setCustomId(product.id || '');
         } else { Alert.alert('Lỗi', 'Không tìm thấy sản phẩm.'); navigation.goBack(); }
-      } catch (error) { Alert.alert('Lỗi', 'Không thể tải dữ liệu sản phẩm.'); navigation.goBack(); }
+      } catch (error) { console.error("Error loading product:", error); Alert.alert('Lỗi', 'Không thể tải dữ liệu sản phẩm.'); navigation.goBack(); }
       setLoading(false);
     };
     fetchProduct();
   }, [productId, navigation]);
 
-  // Effect load Categories
+  // Effect load Categories (using onSnapshot for real-time)
   useEffect(() => {
-      setLoadingCategories(true);
-      const categoryRef = collection(db, 'categories');
-      const unsubscribe = onSnapshot(categoryRef, (querySnapshot) => {
-          const categoryList = [];
-          querySnapshot.forEach((doc) => { categoryList.push({ id: doc.id, name: doc.data().name }); });
-          categoryList.sort((a, b) => a.name.localeCompare(b.name));
-          setCategories(categoryList);
-          setLoadingCategories(false);
-      });
-      return () => unsubscribe();
+    setLoadingCategories(true);
+    const categoryRef = collection(db, 'categories');
+    const unsubscribe = onSnapshot(categoryRef, (querySnapshot) => {
+      const categoryList = [];
+      querySnapshot.forEach((doc) => { categoryList.push({ id: doc.id, name: doc.data().name }); });
+      categoryList.sort((a, b) => a.name.localeCompare(b.name));
+      setCategories(categoryList);
+      setLoadingCategories(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Effect load Units
+  // Effect load Units (using onSnapshot for real-time)
   useEffect(() => {
-      setLoadingUnits(true);
-      const unitRef = collection(db, 'units');
-      const unsubscribe = onSnapshot(unitRef, (querySnapshot) => {
-          const unitList = [];
-          querySnapshot.forEach((doc) => { unitList.push({ id: doc.id, name: doc.data().name }); });
-          unitList.sort((a, b) => a.name.localeCompare(b.name));
-          setUnits(unitList);
-          setLoadingUnits(false);
-      });
-      return () => unsubscribe();
+    setLoadingUnits(true);
+    const unitRef = collection(db, 'units');
+    const unsubscribe = onSnapshot(unitRef, (querySnapshot) => {
+      const unitList = [];
+      querySnapshot.forEach((doc) => { unitList.push({ id: doc.id, name: doc.data().name }); });
+      unitList.sort((a, b) => a.name.localeCompare(b.name));
+      setUnits(unitList);
+      setLoadingUnits(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Function check and add lookup
+  // Function check and add lookup (Simplified for client-side use)
   const checkAndAddLookup = async (collectionName, value) => {
     if (!value || typeof value !== 'string') return false;
     const trimmedValue = value.trim();
@@ -107,30 +110,60 @@ export default function EditProductScreen({ route, navigation }) {
     if (!name || !price || !stock || !costPrice || !unit || !category) { Alert.alert('Lỗi', 'Vui lòng nhập/chọn đầy đủ thông tin.'); return; }
     setSaving(true);
     try {
+      // Đảm bảo Unit và Category tồn tại (hoặc được tạo nếu là Admin)
       await checkAndAddLookup('units', unit);
       await checkAndAddLookup('categories', category);
+      
       const docRef = doc(db, 'products', productId);
       await updateDoc(docRef, {
-        name: name, price: parseFloat(price), stock: parseInt(stock, 10),
-        costPrice: parseFloat(costPrice), unit: unit.trim(), category: category.trim(),
+        name: name, 
+        price: parseFloat(price), 
+        stock: parseInt(stock, 10),
+        costPrice: parseFloat(costPrice), 
+        unit: unit.trim(), 
+        category: category.trim(),
       });
+      
+      Alert.alert('Thành công', 'Cập nhật sản phẩm thành công.');
       navigation.goBack();
-    } catch (error) { console.error("Error updating product:", error); Alert.alert('Lỗi', 'Không thể cập nhật sản phẩm.'); }
+
+    } catch (error) { 
+      console.error("Error updating product:", error); 
+      Alert.alert('Lỗi', `Không thể cập nhật sản phẩm. Lỗi: ${error.message}`); 
+    }
     setSaving(false);
   };
 
-  // Function delete product
+  // 🔥 CHỨC NĂNG XÓA SẢN PHẨM KHỎI FIRESTORE
   const handleDeleteProduct = async () => {
     setSaving(true);
     try {
       const docRef = doc(db, 'products', productId);
-      await deleteDoc(docRef);
+      await deleteDoc(docRef); // <-- Dùng deleteDoc để xóa Document
+      
+      Alert.alert('Thành công', 'Đã xóa sản phẩm khỏi kho hàng.');
       navigation.goBack();
-    } catch (error) { console.error("Error deleting product:", error); Alert.alert('Lỗi', 'Không thể xóa sản phẩm.'); setSaving(false); }
+      
+    } catch (error) { 
+      // Sửa để hiển thị lỗi chi tiết hơn
+      console.error("Error deleting product:", error); 
+      Alert.alert('Lỗi', `Không thể xóa sản phẩm. Lỗi: ${error.message}. Vui lòng kiểm tra Security Rules.`); 
+      setSaving(false); 
+    }
   };
 
-  // Function confirm delete
-  const confirmDelete = () => { Alert.alert('Xác nhận xóa', `Bạn có chắc muốn xóa "${name}"?`, [ { text: 'Hủy', style: 'cancel' }, { text: 'Xóa', style: 'destructive', onPress: handleDeleteProduct } ], { cancelable: true }); };
+  // Hộp thoại xác nhận xóa
+  const confirmDelete = () => { 
+    Alert.alert(
+      'Xác nhận xóa', 
+      `Bạn có chắc muốn xóa vĩnh viễn sản phẩm "${name}"?`, 
+      [ 
+        { text: 'Hủy', style: 'cancel' }, 
+        { text: 'Xóa', style: 'destructive', onPress: handleDeleteProduct } 
+      ], 
+      { cancelable: true }
+    ); 
+  };
 
   // Modal Handlers (Category)
   const handleSelectCategory = (selectedCategory) => { setCategory(selectedCategory.name); setCategoryModalVisible(false); setShowNewCategoryInput(false); setNewCategoryName(''); };
@@ -147,13 +180,13 @@ export default function EditProductScreen({ route, navigation }) {
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-           <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving} style={styles.backButton}>
-               <Ionicons name="chevron-back-outline" size={32} color={saving ? '#AAA' : '#007AFF'} />
-           </TouchableOpacity>
-           <Text style={styles.headerTitle} numberOfLines={1}>{name || 'Sửa hàng hóa'}</Text>
-           <TouchableOpacity onPress={handleUpdateProduct} disabled={saving}>
-               <Text style={styles.editButtonText}>Sửa</Text>
-           </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving} style={styles.backButton}>
+                <Ionicons name="chevron-back-outline" size={32} color={saving ? '#AAA' : '#007AFF'} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle} numberOfLines={1}>{name || 'Sửa hàng hóa'}</Text>
+            <TouchableOpacity onPress={handleUpdateProduct} disabled={saving}>
+                <Text style={styles.editButtonText}>Sửa</Text>
+            </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.form}>
@@ -186,19 +219,79 @@ export default function EditProductScreen({ route, navigation }) {
             <View style={styles.column}><Text style={styles.label}>Tồn kho *</Text><TextInput style={styles.input} value={stock} onChangeText={setStock} keyboardType="numeric" /></View>
           </View>
           {saving && <ActivityIndicator size="large" color="#007AFF" style={{ marginTop: 20 }} />}
+          
           {/* Delete Button */}
           <TouchableOpacity style={styles.deleteButton} onPress={confirmDelete} disabled={saving}>
             <Text style={styles.deleteButtonText}>Xóa sản phẩm</Text>
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Category Modal */}
+        {/* Category Modal (Simplified for brevity) */}
         <Modal animationType="slide" transparent={true} visible={categoryModalVisible} onRequestClose={() => setCategoryModalVisible(false)}>
-            <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Chọn nhóm hàng</Text><TouchableOpacity onPress={() => setCategoryModalVisible(false)}><Ionicons name="close-circle" size={30} color="#AAA" /></TouchableOpacity></View>{!showNewCategoryInput ? (<TouchableOpacity style={styles.createNewButton} onPress={() => setShowNewCategoryInput(true)}><Ionicons name="add-circle-outline" size={22} color="#007AFF" /><Text style={styles.createNewButtonText}>Tạo nhóm hàng mới</Text></TouchableOpacity>) : (<View style={styles.newCategoryInputContainer}><TextInput style={styles.newCategoryInput} placeholder="Nhập tên nhóm hàng mới..." value={newCategoryName} onChangeText={setNewCategoryName} autoFocus={true}/><TouchableOpacity style={styles.confirmNewCategoryButton} onPress={handleCreateAndSelectCategory} disabled={loadingCategories}>{loadingCategories ? <ActivityIndicator size="small" color="#FFF"/> : <Text style={styles.confirmNewCategoryButtonText}>Thêm</Text>}</TouchableOpacity><TouchableOpacity onPress={() => setShowNewCategoryInput(false)}><Ionicons name="close-circle-outline" size={26} color="#AAA" style={{marginLeft: 5}}/></TouchableOpacity></View>)}{loadingCategories && !showNewCategoryInput && <ActivityIndicator size="large" color="#007AFF" />}{!loadingCategories && !showNewCategoryInput && (<FlatList data={categories} keyExtractor={(item) => item.id} renderItem={({ item }) => (<TouchableOpacity style={styles.modalItem} onPress={() => handleSelectCategory(item)}><Text style={styles.modalItemText}>{item.name}</Text></TouchableOpacity>)} ListEmptyComponent={<Text style={styles.emptyListText}>Chưa có nhóm hàng nào.</Text>} style={{marginTop: 10}}/>)}</View></View>
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Chọn nhóm hàng</Text>
+                        <TouchableOpacity onPress={() => setCategoryModalVisible(false)}><Ionicons name="close-circle" size={30} color="#AAA" /></TouchableOpacity>
+                    </View>
+                    {!showNewCategoryInput ? (
+                        <TouchableOpacity style={styles.createNewButton} onPress={() => setShowNewCategoryInput(true)}>
+                            <Ionicons name="add-circle-outline" size={22} color="#007AFF" />
+                            <Text style={styles.createNewButtonText}>Tạo nhóm hàng mới</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.newCategoryInputContainer}>
+                            <TextInput style={styles.newCategoryInput} placeholder="Nhập tên nhóm hàng mới..." value={newCategoryName} onChangeText={setNewCategoryName} autoFocus={true}/>
+                            <TouchableOpacity style={styles.confirmNewCategoryButton} onPress={handleCreateAndSelectCategory} disabled={loadingCategories}>
+                                {loadingCategories ? <ActivityIndicator size="small" color="#FFF"/> : <Text style={styles.confirmNewCategoryButtonText}>Thêm</Text>}
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowNewCategoryInput(false)}><Ionicons name="close-circle-outline" size={26} color="#AAA" style={{marginLeft: 5}}/></TouchableOpacity>
+                        </View>
+                    )}
+                    {loadingCategories && !showNewCategoryInput && <ActivityIndicator size="large" color="#007AFF" />}
+                    {!loadingCategories && !showNewCategoryInput && (
+                        <FlatList data={categories} keyExtractor={(item) => item.id} renderItem={({ item }) => (
+                            <TouchableOpacity style={styles.modalItem} onPress={() => handleSelectCategory(item)}>
+                                <Text style={styles.modalItemText}>{item.name}</Text>
+                            </TouchableOpacity>
+                        )} ListEmptyComponent={<Text style={styles.emptyListText}>Chưa có nhóm hàng nào.</Text>} style={{marginTop: 10}}/>
+                    )}
+                </View>
+            </View>
         </Modal>
-        {/* Unit Modal */}
+
+        {/* Unit Modal (Simplified for brevity) */}
         <Modal animationType="slide" transparent={true} visible={unitModalVisible} onRequestClose={() => setUnitModalVisible(false)}>
-            <View style={styles.modalOverlay}><View style={styles.modalContent}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Chọn đơn vị</Text><TouchableOpacity onPress={() => setUnitModalVisible(false)}><Ionicons name="close-circle" size={30} color="#AAA" /></TouchableOpacity></View>{!showNewUnitInput ? (<TouchableOpacity style={styles.createNewButton} onPress={() => setShowNewUnitInput(true)}><Ionicons name="add-circle-outline" size={22} color="#007AFF" /><Text style={styles.createNewButtonText}>Tạo đơn vị mới</Text></TouchableOpacity>) : (<View style={styles.newCategoryInputContainer}><TextInput style={styles.newCategoryInput} placeholder="Nhập tên đơn vị mới..." value={newUnitName} onChangeText={setNewUnitName} autoFocus={true}/><TouchableOpacity style={styles.confirmNewCategoryButton} onPress={handleCreateAndSelectUnit} disabled={loadingUnits}>{loadingUnits ? <ActivityIndicator size="small" color="#FFF"/> : <Text style={styles.confirmNewCategoryButtonText}>Thêm</Text>}</TouchableOpacity><TouchableOpacity onPress={() => setShowNewUnitInput(false)}><Ionicons name="close-circle-outline" size={26} color="#AAA" style={{marginLeft: 5}}/></TouchableOpacity></View>)}{loadingUnits && !showNewUnitInput && <ActivityIndicator size="large" color="#007AFF" />}{!loadingUnits && !showNewUnitInput && (<FlatList data={units} keyExtractor={(item) => item.id} renderItem={({ item }) => (<TouchableOpacity style={styles.modalItem} onPress={() => handleSelectUnit(item)}><Text style={styles.modalItemText}>{item.name}</Text></TouchableOpacity>)} ListEmptyComponent={<Text style={styles.emptyListText}>Chưa có đơn vị nào.</Text>} style={{marginTop: 10}}/>)}</View></View>
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Chọn đơn vị</Text>
+                        <TouchableOpacity onPress={() => setUnitModalVisible(false)}><Ionicons name="close-circle" size={30} color="#AAA" /></TouchableOpacity>
+                    </View>
+                    {!showNewUnitInput ? (
+                        <TouchableOpacity style={styles.createNewButton} onPress={() => setShowNewUnitInput(true)}>
+                            <Ionicons name="add-circle-outline" size={22} color="#007AFF" />
+                            <Text style={styles.createNewButtonText}>Tạo đơn vị mới</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={styles.newCategoryInputContainer}>
+                            <TextInput style={styles.newCategoryInput} placeholder="Nhập tên đơn vị mới..." value={newUnitName} onChangeText={setNewUnitName} autoFocus={true}/>
+                            <TouchableOpacity style={styles.confirmNewCategoryButton} onPress={handleCreateAndSelectUnit} disabled={loadingUnits}>
+                                {loadingUnits ? <ActivityIndicator size="small" color="#FFF"/> : <Text style={styles.confirmNewCategoryButtonText}>Thêm</Text>}
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowNewUnitInput(false)}><Ionicons name="close-circle-outline" size={26} color="#AAA" style={{marginLeft: 5}}/></TouchableOpacity>
+                        </View>
+                    )}
+                    {loadingUnits && !showNewUnitInput && <ActivityIndicator size="large" color="#007AFF" />}
+                    {!loadingUnits && !showNewUnitInput && (
+                        <FlatList data={units} keyExtractor={(item) => item.id} renderItem={({ item }) => (
+                            <TouchableOpacity style={styles.modalItem} onPress={() => handleSelectUnit(item)}>
+                                <Text style={styles.modalItemText}>{item.name}</Text>
+                            </TouchableOpacity>
+                        )} ListEmptyComponent={<Text style={styles.emptyListText}>Chưa có đơn vị nào.</Text>} style={{marginTop: 10}}/>
+                    )}
+                </View>
+            </View>
         </Modal>
 
       </SafeAreaView>

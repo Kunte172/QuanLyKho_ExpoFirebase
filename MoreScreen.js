@@ -19,16 +19,9 @@ export default function MoreScreen() {
   const { logout, userRole, isManager } = useAuth();
   const navigation = useNavigation();
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Đăng xuất",
-      "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống?",
-      [
-        { text: "Hủy", style: "cancel" },
-        { text: "Đăng xuất", onPress: logout, style: "destructive" }, // Gọi hàm logout từ Context
-      ],
-      { cancelable: true }
-    );
+  // Đăng xuất tức thời
+  const handleLogoutInstant = () => {
+    logout(); 
   };
 
   return (
@@ -57,7 +50,12 @@ export default function MoreScreen() {
               <OptionRow
                 icon="people-outline"
                 title="Quản lý người dùng"
-                onPress={() => Alert.alert('Tính năng đang phát triển', 'Chuyển đến màn hình quản lý người dùng')}
+                onPress={() => navigation.navigate('ManageUsers')}
+              />
+              <OptionRow
+                icon="time-outline" // <-- ICON MỚI
+                title="Lịch sử Nhập/Xuất" // <-- TÙY CHỌN MỚI
+                onPress={() => navigation.navigate('StockLog')} // <-- ĐIỀU HƯỚNG MỚI
               />
               <OptionRow
                 icon="settings-outline"
@@ -74,7 +72,7 @@ export default function MoreScreen() {
             icon="log-out-outline"
             title="Đăng xuất"
             isDestructive={true}
-            onPress={handleLogout} // KẾT NỐI VỚI HÀM LOGOUT
+            onPress={handleLogoutInstant}
           />
         </View>
 
@@ -89,8 +87,11 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold' },
   roleTag: { fontSize: 14, color: '#007AFF', fontWeight: '600', backgroundColor: '#E0F0FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 5 },
   scrollContent: { padding: 16 },
+  
   sectionHeader: { fontSize: 14, color: '#888', fontWeight: '600', marginTop: 20, marginBottom: 8, marginHorizontal: 5 },
+
   card: { backgroundColor: '#FFFFFF', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#EEE' },
+  
   optionRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -102,5 +103,6 @@ const styles = StyleSheet.create({
   optionIcon: { marginRight: 15 },
   optionTitle: { flex: 1, fontSize: 16, color: '#333' },
   destructiveText: { color: '#FF3B30', fontWeight: '500' },
+  
   logoutContainer: { marginTop: 30, backgroundColor: '#FFFFFF', borderRadius: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#EEE' },
 });

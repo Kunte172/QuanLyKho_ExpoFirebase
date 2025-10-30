@@ -18,7 +18,10 @@ import MainTabNavigator from './MainTabNavigator';
 import AddProductScreen from './AddProductScreen';
 import EditProductScreen from './EditProductScreen';
 import InvoicesDetailScreen from './InvoicesDetailScreen';
-import ChangePasswordScreen from './ChangePasswordScreen'; // <-- Đổi mật khẩu
+import ChangePasswordScreen from './ChangePasswordScreen'; 
+import ManageUsersScreen from './ManageUsersScreen'; 
+import EditUserScreen from './EditUserScreen';
+import StockLogScreen from './StockLogScreen'; // <-- MÀN HÌNH MỚI
 
 const Stack = createNativeStackNavigator();
 
@@ -59,11 +62,26 @@ function MainAppStack() {
         options={{ headerShown: false }} 
       />
       
-      {/* Màn hình Đổi mật khẩu */}
+      {/* Màn hình Tài khoản/Quản trị */}
       <Stack.Screen 
         name="ChangePassword" 
         component={ChangePasswordScreen} 
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="ManageUsers" 
+        component={ManageUsersScreen} // Danh sách User
+        options={{ headerShown: false }} 
+      />
+      <Stack.Screen 
+        name="EditUser" 
+        component={EditUserScreen} // Chỉnh sửa User
         options={{ headerShown: false, presentation: 'modal' }} 
+      />
+      <Stack.Screen 
+        name="StockLog" 
+        component={StockLogScreen} // Lịch sử Nhập/Xuất
+        options={{ headerShown: false }} 
       />
       
     </Stack.Navigator>

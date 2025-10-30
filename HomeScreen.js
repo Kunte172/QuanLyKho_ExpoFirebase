@@ -6,9 +6,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { collection, onSnapshot, query } from 'firebase/firestore'; 
 import { db } from './firebaseConfig';
-import { useAuth } from './AuthContext'; // <-- SỬ DỤNG useAuth
+import { useAuth } from './AuthContext'; 
 
-// --- Component ProductItem ---
 const ProductItem = ({ item, onPress }) => (
   <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
     {/* Placeholder ảnh */}
@@ -25,12 +24,10 @@ const ProductItem = ({ item, onPress }) => (
     </View>
   </TouchableOpacity>
 );
-// --- KẾT THÚC ProductItem ---
 
 
-// --- Màn hình Home ---
 export default function HomeScreen({ navigation }) {
-  const { userRole, isManager, logout } = useAuth(); // <-- Lấy role và hàm logout
+  const { userRole, isManager, logout } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [products, setProducts] = useState([]);
@@ -73,22 +70,22 @@ export default function HomeScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
-  // Logic lọc và sắp xếp (Sắp xếp trong bộ nhớ)
+  // Logic lọc và sắp xếp
   const filteredAndSortedData = useMemo(() => {
     let data = [...products];
     
-    // 1. Lọc theo tìm kiếm
+    // Lọc theo tìm kiếm
     if (searchQuery) { 
       const textData = searchQuery.toUpperCase(); 
       data = data.filter((item) => (item.name ? item.name.toUpperCase() : '').indexOf(textData) > -1); 
     }
     
-    // 2. Lọc theo danh mục
+    // Lọc theo danh mục
     if (selectedCategory && selectedCategory.id !== 'all') { 
       data = data.filter(item => item.category === selectedCategory.name); 
     }
 
-    // 3. Sắp xếp theo giá (Ưu tiên)
+    // Sắp xếp theo giá 
     if (sortOrder === 'asc') { 
       data.sort((a, b) => (a.price || 0) - (b.price || 0)); 
     } else if (sortOrder === 'desc') { 
@@ -108,7 +105,6 @@ export default function HomeScreen({ navigation }) {
   const renderProductItem = ({ item }) => (
     <ProductItem 
         item={item} 
-        // 🚨 PHÂN QUYỀN TRÊN ITEM PRESS: Chỉ Admin được vào Edit/Delete
         onPress={() => isManager ? 
             navigation.navigate('EditProduct', { productId: item.firestoreId }) : 
             Alert.alert('Thông báo', 'Bạn không có quyền chỉnh sửa/xóa hàng hóa. Vui lòng liên hệ quản trị viên.')
@@ -147,7 +143,6 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.headerRight}>
             <Text style={styles.roleText}>{userRole === 'admin' ? 'Quản trị' : 'Nhân viên'}</Text> 
             <TouchableOpacity onPress={handleLogout} style={{marginLeft: 10}}>
-                <Ionicons name="log-out-outline" size={24} color="#FF3B30" />
             </TouchableOpacity>
         </View>
       </View>
@@ -244,7 +239,6 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// --- StyleSheet ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
